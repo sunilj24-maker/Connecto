@@ -1,4 +1,11 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import CreatorLanding from './CreatorLanding';
+import CreatorDashboard from './CreatorDashboard';
+import PrivacyPolicy from './PrivacyPolicy';
+import TermsOfService from './TermsOfService';
+import Header from './Header';
+import Footer from './Footer';
 
 // Simple SVG Icons
 const StarIcon = ({ className }) => (
@@ -34,29 +41,12 @@ const ActivityIcon = ({ className }) => (
   </svg>
 );
 
-export default function App() {
+const MainLanding = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans">
       
       {/* Navigation Bar */}
-      <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full bg-white z-50 sticky top-0 border-b border-slate-100">
-        <div className="flex items-center gap-1 font-extrabold text-xl tracking-tighter cursor-pointer">
-          <span>Connect</span>
-          <span className="text-slate-400">Hub</span>
-        </div>
-        
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-          <a href="#how-it-works" className="hover:text-black transition-colors">How it Works</a>
-          <a href="#features" className="hover:text-black transition-colors">Features</a>
-          <a href="#about" className="hover:text-black transition-colors">About</a>
-        </div>
-        
-        <div>
-          <a href="https://google.com" className="bg-black text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-slate-800 transition-colors inline-block">
-            Get Started
-          </a>
-        </div>
-      </nav>
+      <Header />
 
       {/* Main Content Area */}
       <main className="flex-grow flex flex-col items-center justify-center w-full">
@@ -85,8 +75,8 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl mx-auto">
             
             {/* Card 1: Creators */}
-            <a 
-              href="https://google.com" 
+            <Link 
+              to="/creator" 
               className="group relative flex flex-col p-8 bg-white border border-slate-200 rounded-3xl transition-all duration-300 hover:bg-black hover:border-black hover:shadow-xl cursor-pointer text-left"
             >
               <div className="h-12 w-12 border border-slate-200 rounded-full flex items-center justify-center mb-6 text-black group-hover:bg-white group-hover:text-black transition-colors duration-300">
@@ -102,7 +92,7 @@ export default function App() {
                   <ArrowRightIcon />
                 </span>
               </div>
-            </a>
+            </Link>
 
             {/* Card 2: Businesses - UPDATED TO DEFAULT WHITE, HOVER BLACK */}
             <a 
@@ -222,16 +212,22 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-200 py-8 px-6 bg-white">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between text-sm text-slate-500 font-medium">
-          <p>&copy; {new Date().getFullYear()} ConnectHub. All rights reserved.</p>
-          <div className="flex items-center gap-6 mt-4 md:mt-0">
-            <a href="https://google.com" className="hover:text-slate-900 transition-colors">Privacy & Data Policy</a>
-            <a href="https://google.com" className="hover:text-slate-900 transition-colors">Terms of Service</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
     </div>
+  );
+};
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MainLanding />} />
+        <Route path="/creator" element={<CreatorLanding />} />
+        <Route path="/dashboard" element={<CreatorDashboard />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

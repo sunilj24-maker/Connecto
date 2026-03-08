@@ -10,17 +10,25 @@ datasource db {
 
 model CreatorProfile {
   id                     String          @id @default(uuid())
+  email                  String          @unique
+  password               String
+  phone                  String?
   name                   String?
-  profile_image_url      String?
-  primary_location       String
+  creator_location       String
   audience_top_locations String[]
   areas_of_interest      String[]
   social_profiles        SocialProfile[]
 
   audience_primary_age_min Int
   audience_primary_age_max Int
-  audience_top_interests   String[]
   audience_gender_split    String?
+
+  wallet_balance           Decimal         @default(0.00)
+  is_verified              Boolean         @default(false)
+  profile_completion       Int             @default(0)
+
+  collaborations           Collaboration[]
+  saved_campaigns          SavedCampaign[]
 }
 
 enum SocialPlatform {
@@ -41,6 +49,7 @@ model SocialProfile {
   creator        CreatorProfile @relation(fields: [creator_id], references: [id], onDelete: Cascade)
   platform       SocialPlatform
   handle         String
+  profile_image_url String?
   url            String
   follower_count Int
 }
@@ -52,4 +61,39 @@ model Campaign {
   target_audience_age_min   Int
   target_audience_age_max   Int
   target_audience_interests String[]
+
+  cover_image_url           String?
+  payout_amount             Decimal
+  currency                  String          @default("INR")
+  location_requirement      String
+  min_followers_required    Int             @default(0)
+
+  collaborations            Collaboration[]
+  saved_by                  SavedCampaign[]
+}
+
+model Collaboration {
+  id                  String         @id @default(uuid())
+  creator_id          String
+  creator             CreatorProfile @relation(fields: [creator_id], references: [id], onDelete: Cascade)
+  campaign_id         String
+  campaign            Campaign       @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  
+  application_message String?
+
+  status              String         @default("PENDING")
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+}
+
+model SavedCampaign {
+  id          String         @id @default(uuid())
+  creator_id  String
+  creator     CreatorProfile @relation(fields: [creator_id], references: [id], onDelete: Cascade)
+  campaign_id String
+  campaign    Campaign       @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  
+  created_at  DateTime       @default(now())
+
+  @@unique([creator_id, campaign_id])
 }
