@@ -97,3 +97,11 @@ model SavedCampaign {
 
   @@unique([creator_id, campaign_id])
 }
+
+model OtpVerification {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  otp        String
+  expires_at DateTime
+  created_at DateTime @default(now())
+}
