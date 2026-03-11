@@ -19,7 +19,8 @@ export default function LoginModal({ isOpen, onClose }) {
     setError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://connecto-production.up.railway.app';
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -40,7 +41,8 @@ export default function LoginModal({ isOpen, onClose }) {
         setError(data.error || 'Invalid credentials');
       }
     } catch (err) {
-      setError('Server error. Please try again later.');
+      console.error(err);
+      setError('Network error or server unreachable. Check console.');
     } finally {
       setLoading(false);
     }

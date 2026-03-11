@@ -147,12 +147,12 @@ app.post('/api/auth/login', async (req, res) => {
 
     const user = await prisma.creatorProfile.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'This email is not registered. Please create an account.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Incorrect password.' });
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'secret_key', { expiresIn: '7d' });
