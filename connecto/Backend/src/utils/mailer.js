@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify connection on startup
-transporter.verify((error, success) => {
+transporter.verify((error,success) => {
   if (error) {
     console.error('❌ SMTP connection failed:', error.message);
     console.error('   User:', process.env.GMAIL_USER);

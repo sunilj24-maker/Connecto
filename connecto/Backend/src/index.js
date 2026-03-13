@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '../generated/prisma/index.js';
+import { PrismaClient } from '@prisma/client';
 import { sendOtpEmail } from './utils/mailer.js';
 
 dotenv.config();
