@@ -1,5 +1,10 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+// Force Node.js to prefer IPv4 for all DNS lookups (bypasses Render IPv6 issues)
+dns.setDefaultResultOrder('ipv4first');
+
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
