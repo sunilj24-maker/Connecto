@@ -8,8 +8,10 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendOtpEmail(email, otp) {
   try {
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Connecto <onboarding@routineready.me>';
+
     const data = await resend.emails.send({
-      from: 'Connecto <onboarding@resend.dev>', // Use Resend's default testing domain since we don't have a verified domain yet
+      from: fromEmail,
       to: [email],
       subject: 'Your Connecto Verification Code',
       html: `
