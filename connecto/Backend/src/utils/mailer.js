@@ -4,8 +4,8 @@ dotenv.config();
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false, // use STARTTLS instead of implicit SSL
   family: 4, // force IPv4
   auth: {
     user: process.env.GMAIL_USER,
