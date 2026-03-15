@@ -221,7 +221,9 @@ export default function ProfileOnboardingModal({
 
       if (!response.ok) {
         throw new Error(
-          result?.message || `HTTP error! status: ${response.status}`,
+          result?.error ||
+            result?.message ||
+            `HTTP error! status: ${response.status}`,
         );
       }
 
