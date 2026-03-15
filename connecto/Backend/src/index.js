@@ -1,10 +1,10 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-import { sendOtpEmail } from './utils/mailer.js';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
+import { sendOtpEmail } from "./utils/mailer.js";
 
 dotenv.config();
 
@@ -12,11 +12,13 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({
-  origin: '*', // Allows all origins (localhost and vercel/railway frontends)
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: "*", // Allows all origins (localhost and vercel/railway frontends)
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 
 // ─── Helper: generate 6-digit OTP ─────────────────────────────────────────────
@@ -26,10 +28,10 @@ function generateOtp() {
 
 // ─── STEP 1: Request OTP ──────────────────────────────────────────────────────
 // POST /api/auth/request-otp  { email }
-app.post('/api/auth/request-otp', async (req, res) => {
+app.post("/api/auth/request-otp", async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required.' });
+    if (!email) return res.status(400).json({ error: "Email is required." });
 
     const otp = generateOtp();
     const expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -43,62 +45,86 @@ app.post('/api/auth/request-otp', async (req, res) => {
 
     await sendOtpEmail(email, otp);
 
-    res.status(200).json({ message: 'OTP sent to your email.' });
+    res.status(200).json({ message: "OTP sent to your email." });
   } catch (error) {
-    console.error('Error sending OTP:', error);
-    res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+    console.error("Error sending OTP:", error);
+    res.status(500).json({ error: "Failed to send OTP. Please try again." });
   }
 });
 
 // ─── STEP 2: Verify OTP ───────────────────────────────────────────────────────
 // POST /api/auth/verify-otp  { email, otp }
-app.post('/api/auth/verify-otp', async (req, res) => {
+app.post("/api/auth/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ error: 'Email and OTP are required.' });
+    if (!email || !otp)
+      return res.status(400).json({ error: "Email and OTP are required." });
 
-    const record = await prisma.otpVerification.findUnique({ where: { email } });
+    const record = await prisma.otpVerification.findUnique({
+      where: { email },
+    });
 
-    if (!record) return res.status(400).json({ error: 'No OTP request found for this email.' });
-    if (record.otp !== otp) return res.status(400).json({ error: 'Invalid verification code.' });
-    if (new Date() > record.expires_at) return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+    if (!record)
+      return res
+        .status(400)
+        .json({ error: "No OTP request found for this email." });
+    if (record.otp !== otp)
+      return res.status(400).json({ error: "Invalid verification code." });
+    if (new Date() > record.expires_at)
+      return res.status(400).json({
+        error: "Verification code has expired. Please request a new one.",
+      });
 
     // OTP is valid — issue a short-lived "verified" token so frontend can proceed to Step 3
     const verifiedToken = jwt.sign(
       { email, verified: true },
-      process.env.JWT_SECRET || 'secret_key',
-      { expiresIn: '15m' }
+      process.env.JWT_SECRET || "secret_key",
+      { expiresIn: "15m" },
     );
 
-    res.status(200).json({ message: 'Email verified.', verifiedToken });
+    res.status(200).json({ message: "Email verified.", verifiedToken });
   } catch (error) {
-    console.error('Error verifying OTP:', error);
-    res.status(500).json({ error: 'Internal server error during OTP verification.' });
+    console.error("Error verifying OTP:", error);
+    res
+      .status(500)
+      .json({ error: "Internal server error during OTP verification." });
   }
 });
 
 // ─── STEP 3: Set Password & Create Account ────────────────────────────────────
 // POST /api/auth/register  { verifiedToken, password }
-app.post('/api/auth/register', async (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
     const { verifiedToken, password } = req.body;
-    if (!verifiedToken || !password) return res.status(400).json({ error: 'Missing required fields.' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    if (!verifiedToken || !password)
+      return res.status(400).json({ error: "Missing required fields." });
+    if (password.length < 6)
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters." });
 
     // Validate the verified token
     let payload;
     try {
-      payload = jwt.verify(verifiedToken, process.env.JWT_SECRET || 'secret_key');
+      payload = jwt.verify(
+        verifiedToken,
+        process.env.JWT_SECRET || "secret_key",
+      );
     } catch {
-      return res.status(401).json({ error: 'Session expired. Please verify your email again.' });
+      return res
+        .status(401)
+        .json({ error: "Session expired. Please verify your email again." });
     }
 
-    if (!payload.verified) return res.status(401).json({ error: 'Email not verified.' });
+    if (!payload.verified)
+      return res.status(401).json({ error: "Email not verified." });
 
     const email = payload.email;
 
     // Check if account already exists
-    const existingUser = await prisma.creatorProfile.findUnique({ where: { email } });
+    const existingUser = await prisma.creatorProfile.findUnique({
+      where: { email },
+    });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -115,7 +141,7 @@ app.post('/api/auth/register', async (req, res) => {
         data: {
           email,
           password: hashedPassword,
-          creator_location: 'Not Specified',
+          creator_location: "Not Specified",
           areas_of_interest: [],
           audience_primary_age_min: 0,
           audience_primary_age_max: 99,
@@ -128,44 +154,64 @@ app.post('/api/auth/register', async (req, res) => {
     await prisma.otpVerification.deleteMany({ where: { email } });
 
     // Issue permanent auth token
-    const token = jwt.sign({ id: profile.id }, process.env.JWT_SECRET || 'secret_key', { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: profile.id },
+      process.env.JWT_SECRET || "secret_key",
+      { expiresIn: "7d" },
+    );
 
-    res.status(201).json({ message: 'Account created successfully.', token, data: { id: profile.id, email: profile.email } });
+    res.status(201).json({
+      message: "Account created successfully.",
+      token,
+      data: { id: profile.id, email: profile.email },
+    });
   } catch (error) {
-    console.error('Error registering user:', error);
-    res.status(500).json({ error: 'Internal server error during registration.' });
+    console.error("Error registering user:", error);
+    res
+      .status(500)
+      .json({ error: "Internal server error during registration." });
   }
 });
 
 // ─── Login Route ──────────────────────────────────────────────────────────────
-app.post('/api/auth/login', async (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     const user = await prisma.creatorProfile.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'This email is not registered. Please create an account.' });
+      return res.status(401).json({
+        error: "This email is not registered. Please create an account.",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Incorrect password.' });
+      return res.status(401).json({ error: "Incorrect password." });
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'secret_key', { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET || "secret_key",
+      { expiresIn: "7d" },
+    );
 
-    res.status(200).json({ message: 'Login successful', token, data: { id: user.id, email: user.email } });
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      data: { id: user.id, email: user.email },
+    });
   } catch (error) {
-    console.error('Error logging in:', error);
-    res.status(500).json({ error: 'Internal server error during login' });
+    console.error("Error logging in:", error);
+    res.status(500).json({ error: "Internal server error during login" });
   }
 });
 
 // ─── Create/Update Full Creator Profile ──────────────────────────────────────
-app.post('/api/creators', async (req, res) => {
+app.post("/api/creators", async (req, res) => {
   try {
     const {
       email,
@@ -179,18 +225,28 @@ app.post('/api/creators', async (req, res) => {
       audience_gender_split,
     } = req.body;
 
-    if (!email || !password || !phone || !categories || categories.length === 0) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (
+      !email ||
+      !password ||
+      !phone ||
+      !categories ||
+      categories.length === 0
+    ) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const existingUser = await prisma.creatorProfile.findUnique({ where: { email } });
+    const existingUser = await prisma.creatorProfile.findUnique({
+      where: { email },
+    });
     if (existingUser) {
-      return res.status(400).json({ error: 'An account with this email already exists.' });
+      return res
+        .status(400)
+        .json({ error: "An account with this email already exists." });
     }
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const creator_location = 'Not Specified';
+    const creator_location = "Not Specified";
 
     const newProfile = await prisma.creatorProfile.create({
       data: {
@@ -201,41 +257,81 @@ app.post('/api/creators', async (req, res) => {
         areas_of_interest: categories,
         audience_primary_age_min: audience_primary_age_min || 0,
         audience_primary_age_max: audience_primary_age_max || 99,
-        audience_top_locations: audience_top_location ? [audience_top_location] : [],
+        audience_top_locations: audience_top_location
+          ? [audience_top_location]
+          : [],
         audience_gender_split: audience_gender_split || null,
         social_profiles: {
-          create: (socialHandles || []).map(sh => ({
+          create: (socialHandles || []).map((sh) => ({
             platform: sh.platform,
             handle: sh.handle,
-            url: sh.url || '',
+            url: sh.url || "",
             follower_count: sh.follower_count || 0,
-            profile_image_url: sh.profile_image_url || null
-          }))
-        }
+            profile_image_url: sh.profile_image_url || null,
+          })),
+        },
       },
-      include: { social_profiles: true }
+      include: { social_profiles: true },
     });
 
-    const token = jwt.sign({ id: newProfile.id }, process.env.JWT_SECRET || 'secret_key', { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: newProfile.id },
+      process.env.JWT_SECRET || "secret_key",
+      { expiresIn: "7d" },
+    );
 
-    res.status(201).json({ message: 'Creator profile created successfully', data: newProfile, token });
+    res.status(201).json({
+      message: "Creator profile created successfully",
+      data: newProfile,
+      token,
+    });
   } catch (error) {
-    console.error('Error creating profile:', error);
-    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
-      return res.status(409).json({ error: 'A profile with this email already exists.' });
+    console.error("Error creating profile:", error);
+    if (error.code === "P2002" && error.meta?.target?.includes("email")) {
+      return res
+        .status(409)
+        .json({ error: "A profile with this email already exists." });
     }
-    res.status(500).json({ error: 'Internal server error while creating profile' });
+    res
+      .status(500)
+      .json({ error: "Internal server error while creating profile" });
   }
 });
 
 // ─── Complete Profile Endpoint ────────────────────────────────────────────
 // POST /api/profile/complete  { email, userId, profileData, socialData }
-app.post('/api/profile/complete', async (req, res) => {
+app.post("/api/profile/complete", async (req, res) => {
   try {
     const { email, userId, profileData, socialData } = req.body;
 
     if (!email || !profileData || !socialData) {
-      return res.status(400).json({ error: 'Missing required fields.' });
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    // Normalize fields that should be arrays (Prisma expects String[]).
+    const audienceTopLocations = Array.isArray(
+      profileData.audience_top_locations,
+    )
+      ? profileData.audience_top_locations
+      : profileData.audience_top_locations
+        ? [profileData.audience_top_locations]
+        : [];
+
+    const areasOfInterest = Array.isArray(profileData.areas_of_interest)
+      ? profileData.areas_of_interest
+      : profileData.areas_of_interest
+        ? [profileData.areas_of_interest]
+        : [];
+
+    // Validate required profile properties (simple sanity checks)
+    if (!profileData.name || !profileData.creator_location) {
+      return res.status(400).json({ error: "Name and location are required." });
+    }
+
+    if (!socialData.platform || !socialData.handle) {
+      return res
+        .status(400)
+        .json({ error: "Social platform and handle are required." });
     }
 
     // Update CreatorProfile
@@ -244,8 +340,8 @@ app.post('/api/profile/complete', async (req, res) => {
       data: {
         name: profileData.name,
         creator_location: profileData.creator_location,
-        audience_top_locations: profileData.audience_top_locations,
-        areas_of_interest: profileData.areas_of_interest,
+        audience_top_locations: audienceTopLocations,
+        areas_of_interest: areasOfInterest,
         audience_primary_age_min: profileData.audience_primary_age_min,
         audience_primary_age_max: profileData.audience_primary_age_max,
         audience_gender_split: profileData.audience_gender_split,
@@ -278,24 +374,27 @@ app.post('/api/profile/complete', async (req, res) => {
           handle: socialData.handle,
           follower_count: socialData.follower_count,
           profile_image_url: socialData.profile_image_url,
-          url: socialData.handle || '', // url field is required in schema
+          url: socialData.handle || "", // url field is required in schema
         },
       });
     }
 
     res.status(200).json({
-      message: 'Profile completed successfully.',
+      message: "Profile completed successfully.",
       data: updatedProfile,
     });
   } catch (error) {
-    console.error('Error completing profile:', error);
-    res.status(500).json({ error: 'Failed to complete profile. Please try again.' });
+    console.error("Error completing profile:", error);
+    res.status(500).json({
+      error: error?.message || "Failed to complete profile. Please try again.",
+      stack: error?.stack || null,
+    });
   }
 });
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 app.listen(PORT, () => {
