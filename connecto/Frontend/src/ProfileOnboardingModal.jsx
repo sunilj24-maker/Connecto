@@ -186,7 +186,9 @@ export default function ProfileOnboardingModal({
           profileData: {
             name: profileData.name,
             creator_location: profileData.creator_location,
-            audience_top_locations: profileData.audience_top_locations,
+            audience_top_locations: profileData.audience_top_locations
+              ? [profileData.audience_top_locations]
+              : [],
             areas_of_interest: profileData.areas_of_interest,
             audience_primary_age_min: parseInt(
               profileData.audience_primary_age_min,
