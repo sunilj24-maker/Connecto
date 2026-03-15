@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
   Wallet,
@@ -6,6 +6,8 @@ import {
   Briefcase,
   MessageSquare,
   BadgeCheck,
+  RefreshCcw,
+  ArrowUp,
 } from "lucide-react";
 import ProfileOnboardingModal from "./ProfileOnboardingModal";
 
@@ -176,6 +178,7 @@ const CreatorDashboard = () => {
   const [currentUserId, setCurrentUserId] = useState("");
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const loaderRef = useRef(null);
+  const mainScrollRef = useRef(null);
 
   const apiUrl =
     (typeof process !== "undefined" && process.env.REACT_APP_API_URL) ||
@@ -238,11 +241,15 @@ const CreatorDashboard = () => {
       }
 
       const fetchedCampaigns = result?.data || [];
+      const orderedFetched = sortCampaigns(
+        fetchedCampaigns,
+        creatorProfile.interests,
+      );
 
       if (pageToLoad === 0) {
-        setCampaigns(fetchedCampaigns);
+        setCampaigns(orderedFetched);
       } else {
-        setCampaigns((prev) => [...prev, ...fetchedCampaigns]);
+        setCampaigns((prev) => [...prev, ...orderedFetched]);
       }
 
       if (fetchedCampaigns.length < PAGE_SIZE) {
@@ -377,10 +384,6 @@ const CreatorDashboard = () => {
     return () => observer.disconnect();
   }, [hasMore, loadingMore, isLoading]);
 
-  const sortedCampaigns = useMemo(() => {
-    return sortCampaigns(campaigns, creatorProfile.interests);
-  }, [campaigns, creatorProfile.interests]);
-
   const handleLogout = async () => {
     try {
       localStorage.removeItem("auth_token");
@@ -391,6 +394,25 @@ const CreatorDashboard = () => {
     } finally {
       window.location.href = "/";
     }
+  };
+
+  const handleRefreshCampaigns = async () => {
+    setPage(0);
+    setCampaigns([]);
+    await fetchCampaigns(0);
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleScrollToTop = () => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+      mainScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -451,6 +473,13 @@ const CreatorDashboard = () => {
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsLogoutConfirmOpen(true)}
+            className="md:hidden text-sm font-bold tracking-tight text-red-600 hover:text-red-700 px-3 py-2 rounded-md hover:bg-red-50 transition-colors border border-red-100"
+          >
+            Logout
+          </button>
         </div>
       </nav>
 
@@ -475,7 +504,7 @@ const CreatorDashboard = () => {
               <span>Wallet</span>
             </div>
           </div>
-          <div className="mt-auto pt-6">
+          <div className="sticky bottom-4 pt-6 bg-white">
             <button
               type="button"
               onClick={() => setIsLogoutConfirmOpen(true)}
@@ -487,11 +516,24 @@ const CreatorDashboard = () => {
         </aside>
 
         {/* 6. Main Content Area */}
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto bg-slate-50/50">
+        <main
+          ref={mainScrollRef}
+          className="flex-1 p-6 md:p-8 overflow-y-auto bg-slate-50/50"
+        >
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-2xl font-bold tracking-tight mb-8">
-              Available Campaigns
-            </h1>
+            <div className="flex items-center justify-between gap-4 mb-8">
+              <h1 className="text-2xl font-bold tracking-tight">
+                Available Campaigns
+              </h1>
+              <button
+                type="button"
+                onClick={handleRefreshCampaigns}
+                className="inline-flex items-center gap-2 text-sm font-bold tracking-tight text-slate-700 bg-white border border-slate-200 px-4 py-2 rounded-full hover:bg-slate-50 transition-colors"
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
 
             {fetchError && campaigns.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center border border-red-200 bg-white rounded-xl shadow-sm">
@@ -523,7 +565,7 @@ const CreatorDashboard = () => {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedCampaigns.map((camp) => (
+                  {campaigns.map((camp) => (
                     <CampaignCard key={camp.id} campaign={camp} />
                   ))}
                 </div>
@@ -599,6 +641,15 @@ const CreatorDashboard = () => {
           </div>
         </div>
       ) : null}
+
+      <button
+        type="button"
+        onClick={handleScrollToTop}
+        className="fixed bottom-6 right-6 z-30 h-11 w-11 rounded-full bg-black text-white shadow-lg flex items-center justify-center hover:bg-slate-800 transition-colors"
+        aria-label="Scroll to top"
+      >
+        <ArrowUp className="w-5 h-5" />
+      </button>
     </div>
   );
 };
