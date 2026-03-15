@@ -1,19 +1,27 @@
-import { Resend } from 'resend';
-import dotenv from 'dotenv';
+import { Resend } from "resend";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 // Create Resend instance (requires RESEND_API_KEY in .env)
-const resend = new Resend(process.env.RESEND_API_KEY);
+// If the key is missing, we skip sending emails (useful for local dev).
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export async function sendOtpEmail(email, otp) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY not configured – skipping OTP email send.");
+    return { skipped: true };
+  }
+
   try {
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Connecto <onboarding@routineready.me>';
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL || "Connecto <onboarding@routineready.me>";
 
     const data = await resend.emails.send({
       from: fromEmail,
       to: [email],
-      subject: 'Your Connecto Verification Code',
+      subject: "Your Connecto Verification Code",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="font-size: 24px; font-weight: 900; color: #000; margin-bottom: 8px;">Verify your email</h2>
@@ -25,15 +33,15 @@ export async function sendOtpEmail(email, otp) {
         </div>
       `,
     });
-    
+
     if (data.error) {
-       console.error('❌ Resend API Error:', data.error);
-       throw new Error(data.error.message);
+      console.error("❌ Resend API Error:", data.error);
+      throw new Error(data.error.message);
     }
-    console.log('✅ OTP Email sent successfully via Resend to:', email);
+    console.log("✅ OTP Email sent successfully via Resend to:", email);
     return data;
   } catch (error) {
-    console.error('❌ Failed to send OTP email:', error);
+    console.error("❌ Failed to send OTP email:", error);
     throw error;
   }
 }
