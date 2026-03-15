@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { sendOtpEmail } from "./utils/mailer.js";
 
@@ -334,20 +335,46 @@ app.post("/api/profile/complete", async (req, res) => {
         .json({ error: "Social platform and handle are required." });
     }
 
-    // Update CreatorProfile
-    const updatedProfile = await prisma.creatorProfile.update({
+    // Find or create the CreatorProfile record so this endpoint works even if the user hasn't been created via /api/auth/register.
+    let updatedProfile;
+
+    const existingProfile = await prisma.creatorProfile.findUnique({
       where: { email },
-      data: {
-        name: profileData.name,
-        creator_location: profileData.creator_location,
-        audience_top_locations: audienceTopLocations,
-        areas_of_interest: areasOfInterest,
-        audience_primary_age_min: profileData.audience_primary_age_min,
-        audience_primary_age_max: profileData.audience_primary_age_max,
-        audience_gender_split: profileData.audience_gender_split,
-        profile_completion: 100,
-      },
     });
+
+    if (existingProfile) {
+      updatedProfile = await prisma.creatorProfile.update({
+        where: { email },
+        data: {
+          name: profileData.name,
+          creator_location: profileData.creator_location,
+          audience_top_locations: audienceTopLocations,
+          areas_of_interest: areasOfInterest,
+          audience_primary_age_min: profileData.audience_primary_age_min,
+          audience_primary_age_max: profileData.audience_primary_age_max,
+          audience_gender_split: profileData.audience_gender_split,
+          profile_completion: 100,
+        },
+      });
+    } else {
+      const hashedPassword = await bcrypt.hash(crypto.randomUUID(), 10);
+      updatedProfile = await prisma.creatorProfile.create({
+        data: {
+          email,
+          password: hashedPassword,
+          creator_location: profileData.creator_location,
+          name: profileData.name,
+          audience_top_locations: audienceTopLocations,
+          areas_of_interest: areasOfInterest,
+          audience_primary_age_min: profileData.audience_primary_age_min,
+          audience_primary_age_max: profileData.audience_primary_age_max,
+          audience_gender_split: profileData.audience_gender_split,
+          profile_completion: 100,
+          wallet_balance: 0,
+          is_verified: false,
+        },
+      });
+    }
 
     // Check if SocialProfile exists
     const existingSocial = await prisma.socialProfile.findFirst({
