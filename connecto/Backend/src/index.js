@@ -228,6 +228,71 @@ app.post('/api/creators', async (req, res) => {
   }
 });
 
+// ─── Complete Profile Endpoint ────────────────────────────────────────────
+// POST /api/profile/complete  { email, userId, profileData, socialData }
+app.post('/api/profile/complete', async (req, res) => {
+  try {
+    const { email, userId, profileData, socialData } = req.body;
+
+    if (!email || !profileData || !socialData) {
+      return res.status(400).json({ error: 'Missing required fields.' });
+    }
+
+    // Update CreatorProfile
+    const updatedProfile = await prisma.creatorProfile.update({
+      where: { email },
+      data: {
+        name: profileData.name,
+        creator_location: profileData.creator_location,
+        audience_top_locations: profileData.audience_top_locations,
+        areas_of_interest: profileData.areas_of_interest,
+        audience_primary_age_min: profileData.audience_primary_age_min,
+        audience_primary_age_max: profileData.audience_primary_age_max,
+        audience_gender_split: profileData.audience_gender_split,
+        profile_completion: 100,
+      },
+    });
+
+    // Check if SocialProfile exists
+    const existingSocial = await prisma.socialProfile.findFirst({
+      where: { creator_id: updatedProfile.id },
+    });
+
+    if (existingSocial) {
+      // UPDATE existing SocialProfile
+      await prisma.socialProfile.update({
+        where: { id: existingSocial.id },
+        data: {
+          platform: socialData.platform,
+          handle: socialData.handle,
+          follower_count: socialData.follower_count,
+          profile_image_url: socialData.profile_image_url,
+        },
+      });
+    } else {
+      // INSERT new SocialProfile
+      await prisma.socialProfile.create({
+        data: {
+          creator_id: updatedProfile.id,
+          platform: socialData.platform,
+          handle: socialData.handle,
+          follower_count: socialData.follower_count,
+          profile_image_url: socialData.profile_image_url,
+          url: socialData.handle || '', // url field is required in schema
+        },
+      });
+    }
+
+    res.status(200).json({
+      message: 'Profile completed successfully.',
+      data: updatedProfile,
+    });
+  } catch (error) {
+    console.error('Error completing profile:', error);
+    res.status(500).json({ error: 'Failed to complete profile. Please try again.' });
+  }
+});
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
