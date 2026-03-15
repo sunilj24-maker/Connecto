@@ -38,6 +38,7 @@ export default function ProfileOnboardingModal({
   currentUserEmail,
   currentUserId,
   existingData = {},
+  onProfileSaved,
 }) {
   const [profileData, setProfileData] = useState({
     name: existingData?.name || "",
@@ -107,6 +108,11 @@ export default function ProfileOnboardingModal({
   };
 
   const validateForm = () => {
+    if (!currentUserEmail) {
+      setErrorMessage("Unable to identify your account. Please log in again.");
+      return false;
+    }
+
     if (!profileData.name.trim()) {
       setErrorMessage("Full Name is required");
       return false;
@@ -123,17 +129,20 @@ export default function ProfileOnboardingModal({
       setErrorMessage("Handle is required");
       return false;
     }
-    if (!socialData.follower_count || socialData.follower_count < 0) {
+
+    const followerCount = parseInt(socialData.follower_count);
+    if (Number.isNaN(followerCount) || followerCount < 0) {
       setErrorMessage("Follower Count must be a valid number");
       return false;
     }
+
     if (!profileData.audience_top_locations.trim()) {
       setErrorMessage("Top Audience Location is required");
       return false;
     }
     if (
-      !profileData.audience_primary_age_min ||
-      !profileData.audience_primary_age_max
+      profileData.audience_primary_age_min === "" ||
+      profileData.audience_primary_age_max === ""
     ) {
       setErrorMessage("Audience Age Range is required");
       return false;
@@ -206,6 +215,16 @@ export default function ProfileOnboardingModal({
           },
         }),
       });
+
+      // Let parent component update cached profile data (so reopening this modal is pre-filled)
+      if (typeof onProfileSaved === "function") {
+        onProfileSaved({
+          email: currentUserEmail,
+          userId: currentUserId,
+          ...profileData,
+          socialData,
+        });
+      }
 
       const contentType = response.headers.get("content-type") || "";
       let result = null;

@@ -12,6 +12,7 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
+const authSecret = process.env.JWT_SECRET || "secret_key";
 
 app.use(
   cors({
@@ -21,6 +22,28 @@ app.use(
   }),
 );
 app.use(express.json());
+
+const getAuthToken = (req) => {
+  const header = req.headers.authorization || "";
+  if (!header.startsWith("Bearer ")) return "";
+  return header.slice("Bearer ".length).trim();
+};
+
+const requireAuth = (req, res, next) => {
+  const token = getAuthToken(req);
+  if (!token) {
+    return res.status(401).json({ error: "Authorization token missing." });
+  }
+
+  try {
+    const payload = jwt.verify(token, authSecret);
+    req.userId = payload.id;
+    req.userEmail = payload.email || null;
+    return next();
+  } catch (error) {
+    return res.status(401).json({ error: "Invalid or expired token." });
+  }
+};
 
 // ─── Helper: generate 6-digit OTP ─────────────────────────────────────────────
 function generateOtp() {
@@ -305,8 +328,17 @@ app.post("/api/profile/complete", async (req, res) => {
   try {
     const { email, userId, profileData, socialData } = req.body;
 
-    if (!email || !profileData || !socialData) {
-      return res.status(400).json({ error: "Missing required fields." });
+    const missingFields = [];
+    if (!email) missingFields.push("email");
+    if (!profileData) missingFields.push("profileData");
+    if (!socialData) missingFields.push("socialData");
+
+    if (missingFields.length > 0) {
+      return res
+        .status(400)
+        .json({
+          error: `Missing required fields: ${missingFields.join(", ")}.`,
+        });
     }
 
     // Normalize fields that should be arrays (Prisma expects String[]).
@@ -420,6 +452,51 @@ app.post("/api/profile/complete", async (req, res) => {
 });
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
+
+// Get current creator profile (auth required)
+app.get("/api/profile/me", requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.creatorProfile.findUnique({
+      where: { id: req.userId },
+      include: { social_profiles: true },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ error: "Profile not found." });
+    }
+
+    return res.status(200).json({ data: profile });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch profile. Please try again." });
+  }
+});
+
+// Get campaigns (auth required)
+app.get("/api/campaigns", requireAuth, async (req, res) => {
+  try {
+    const limitRaw = parseInt(req.query.limit, 10);
+    const offsetRaw = parseInt(req.query.offset, 10);
+
+    const limit = Number.isFinite(limitRaw) ? Math.min(limitRaw, 50) : 6;
+    const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
+
+    const campaigns = await prisma.campaign.findMany({
+      skip: offset,
+      take: limit,
+    });
+
+    return res.status(200).json({ data: campaigns });
+  } catch (error) {
+    console.error("Error fetching campaigns:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch campaigns. Please try again." });
+  }
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
